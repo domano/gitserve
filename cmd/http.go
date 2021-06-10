@@ -5,6 +5,7 @@ import (
 	"github.com/go-git/go-git/v5"
 	"log"
 	"regexp"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -43,7 +44,9 @@ func serveHTTP(cmd *cobra.Command, args []string) {
 
 func cloneOpts(url, privateKey string) git.CloneOptions {
 	url = parseUrl(url)
+	if !strings.HasPrefix(url, "http") {
 
+	}
 	pk := getPublicKey(privateKey)
 
 	opts := git.CloneOptions{
