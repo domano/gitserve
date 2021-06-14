@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"github.com/domano/gitserve/internal"
-	"github.com/go-git/go-git/v5"
 	"log"
 	"regexp"
 
@@ -15,7 +14,7 @@ var httpCmd = &cobra.Command{
 	Short: "Serves the repository via http.",
 	Long:  `Serves the repository via the golang http fileserver.`,
 	Args:  cobra.RangeArgs(1, 1),
-	Run:   serveHTTP,
+	RunE:  serveHTTP,
 }
 
 func init() {
@@ -32,35 +31,27 @@ func init() {
 	// httpCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
 
-func serveHTTP(cmd *cobra.Command, args []string) {
+func serveHTTP(cmd *cobra.Command, args []string) error {
 
 	url = args[0]
-
-	opts := cloneOpts(url, privateKey)
-
-	internal.Serve(baseCtx, baseCtxCancel, &opts, updateInterval, addr)
-}
-
-func cloneOpts(url, privateKey string) git.CloneOptions {
-	url = parseUrl(url)
-
-	pk := getPublicKey(privateKey)
-
-	opts := git.CloneOptions{
-		URL:               url,
-		Auth:              pk,
-		RemoteName:        "",
-		ReferenceName:     "",
-		SingleBranch:      false,
-		NoCheckout:        false,
-		Depth:             0,
-		RecurseSubmodules: 0,
-		Progress:          nil,
-		Tags:              0,
-		InsecureSkipTLS:   false,
-		CABundle:          nil,
+	pk, err := rootCmd.PersistentFlags().GetString("privateKey")
+	if err != nil {
+		return err
 	}
-	return opts
+	opts := cloneOpts(url, pk)
+
+	interval, err := rootCmd.PersistentFlags().GetDuration("interval")
+	if err != nil {
+		return err
+	}
+
+	addr, err := rootCmd.PersistentFlags().GetString("address")
+	if err != nil {
+		return err
+	}
+
+	internal.Serve(baseCtx, baseCtxCancel, &opts, interval, addr)
+	return nil
 }
 
 func parseUrl(url string) string {
