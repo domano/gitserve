@@ -22,3 +22,10 @@ Expose any git repository over http, GraphQL or gRPC
 [] HTTPS   
 [] GraphQL   
 [] gRPC
+
+### Other
+[ ] Clean up error handling in regards to cobra
+[x] 12-Factor-App
+[ ] Comprehensive Docs
+[ ] CI
+[ ] Tests with git fixtures

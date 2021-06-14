@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
@@ -20,10 +21,6 @@ import (
 	"time"
 )
 
-var privateKey string
-var addr string
-var userName, password string
-var updateInterval time.Duration
 var url string
 
 // TODO: make this work for all subcommands
@@ -46,13 +43,17 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	rootCmd.PersistentFlags().StringVarP(&privateKey, "privateKey", "k", "~/.ssh/id_rsa", "For SSH cloning, fetching and pulling you can pass a private key.")
-	rootCmd.PersistentFlags().StringVarP(&addr, "address", "a", ":8080", "Address to use for the server.")
-	rootCmd.PersistentFlags().StringVarP(&userName, "user", "u", "", "Username, if required.")
-	rootCmd.PersistentFlags().StringVarP(&password, "password", "p", "", "Password, if required. PASSING THIS AS A FLAG WILL SHOW THE PASSWORD IN YOUR HISTORY.")
-	rootCmd.PersistentFlags().DurationVarP(&updateInterval, "interval", "i", 5*time.Minute, "Interval that determines how often we check and pull in changes from git.")
+	rootCmd.Flags()
+	rootCmd.PersistentFlags().StringP("privateKey", "k", "~/.ssh/id_rsa", "For SSH cloning, fetching and pulling you can pass a private key.")
+	rootCmd.PersistentFlags().StringP("address", "a", ":8080", "Address to use for the server.")
+	rootCmd.PersistentFlags().StringP("user", "u", "", "Username, if required.")
+	rootCmd.PersistentFlags().StringP("password", "p", "", "Password, if required. PASSING THIS AS A FLAG WILL SHOW THE PASSWORD IN YOUR HISTORY.")
+	rootCmd.PersistentFlags().DurationP("interval", "i", 5*time.Minute, "Interval that determines how often we check and pull in changes from git.")
 
-	viper.BindPFlags(rootCmd.Flags())
+	err := viper.BindPFlags(rootCmd.Flags())
+	if err != nil {
+		log.Fatalf("Could not bind pflags to viper: %s\n", err)
+	}
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -85,7 +86,6 @@ func bindFlags(cmd *cobra.Command, v *viper.Viper) {
 			v.BindEnv(f.Name, fmt.Sprintf("%s_%s", "gitserve", envVarSuffix))
 		}
 
-		f.
 		// Apply the viper config value to the flag when the flag is not set and viper has a value
 		if !f.Changed && v.IsSet(f.Name) {
 			val := v.Get(f.Name)
@@ -93,7 +93,48 @@ func bindFlags(cmd *cobra.Command, v *viper.Viper) {
 		}
 	})
 }
+
+func cloneOpts(url, privateKey string) git.CloneOptions {
+	url = parseUrl(url)
+	if !strings.HasPrefix(url, "http") {
+
+	}
+	pk := getPublicKey(privateKey)
+
+	opts := git.CloneOptions{
+		URL:               url,
+		Auth:              pk,
+		RemoteName:        "",
+		ReferenceName:     "",
+		SingleBranch:      false,
+		NoCheckout:        false,
+		Depth:             0,
+		RecurseSubmodules: 0,
+		Progress:          nil,
+		Tags:              0,
+		InsecureSkipTLS:   false,
+		CABundle:          nil,
+	}
+	return opts
+}
+
 func getPublicKey(privateKey string) *ssh.PublicKeys {
+
+	privateKey = expandHomeTilde(privateKey)
+
+	pw, err := rootCmd.PersistentFlags().GetString("password")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	publicKeys, err := checkPassword(ssh.NewPublicKeysFromFile("git", privateKey, pw))
+	if err != nil {
+		log.Fatal(err)
+	}
+	return publicKeys
+}
+
+func expandHomeTilde(privateKey string) string {
 	usr, _ := user.Current()
 	dir := usr.HomeDir
 	if privateKey == "~" {
@@ -105,12 +146,7 @@ func getPublicKey(privateKey string) *ssh.PublicKeys {
 		// "/something/~/something/"
 		privateKey = filepath.Join(dir, privateKey[2:])
 	}
-
-	publicKeys, err := checkPassword(ssh.NewPublicKeysFromFile("git", privateKey, "pw"))
-	if err != nil {
-		log.Fatal(err)
-	}
-	return publicKeys
+	return privateKey
 }
 
 func checkPassword(publicKeys *ssh.PublicKeys, err error) (*ssh.PublicKeys, error) {
@@ -119,7 +155,11 @@ func checkPassword(publicKeys *ssh.PublicKeys, err error) (*ssh.PublicKeys, erro
 		if err != nil {
 			return nil, err
 		}
-		return checkPassword(ssh.NewPublicKeysFromFile("git", privateKey, pw))
+		pk, err := rootCmd.PersistentFlags().GetString("privateKey")
+		if err != nil {
+			return nil, err
+		}
+		return checkPassword(ssh.NewPublicKeysFromFile("git", expandHomeTilde(pk), pw))
 	}
 	return publicKeys, err
 }
