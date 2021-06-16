@@ -22,3 +22,27 @@ jobs:
 
     - name: Test
       run: go test -v ./...
+      
+    - name: go-semantic-release
+      # You may pin to the exact commit or the version.
+      # uses: go-semantic-release/action@a332ac1139f7b2ad247206ea9c74e71b233b7676
+      uses: go-semantic-release/action@v1.12.0
+      with:
+        # github token
+        #github-token: # optional
+        # creates a changelog file
+        #changelog-file: # optional
+        # create a .ghr file with the parameters for tcnksm/ghr
+        #ghr: # optional
+        # updates the version of a certain file
+        #update-file: # optional
+        # do not create release
+        dry: true
+        # flags the release as a prerelease
+        #prerelease: # optional
+        # starts your initial development release at 0.1.0
+        #allow-initial-development-versions: # optional
+        # increments the patch version if no changes are found
+      #force-bump-patch-version: # optional
+      # options that are passed to the changelog-generator plugin
+      #changelog-generator-opt: # optional
