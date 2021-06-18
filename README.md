@@ -1,4 +1,5 @@
 # gitserve
+[![CircleCI](https://circleci.com/gh/domano/gitserve/tree/main.svg?style=svg)](https://circleci.com/gh/domano/gitserve/tree/main)
 
 Expose any git repository over http, GraphQL or gRPC
 
